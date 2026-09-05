@@ -1,0 +1,74 @@
+name: 构建镜像
+
+# 下游仓库唯一的 workflow：只定义矩阵、调用 buildkit 的可复用 workflow。
+# 只允许手动触发——真正需要的是「我要出一批镜像了」这个显式动作。
+#
+# 凝思只有 x86_64 一个架构：厂商下载站只放 x86_64 的 ISO（download/os/ 各版本
+# 目录实测），没有 arm/loong 介质可取。
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "测试全绿后发布到 GHCR（默认不发布）"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        tier: [micro, base, devel]
+    uses: distrotwin/buildkit/.github/workflows/build-one.yml@70ddbf2837df311bc67fc5fe1fa7a3c728b7d8d9
+    with:
+      distro-id: v6
+      arch:      amd64
+      tier:      ${{ matrix.tier }}
+      runner:    ubuntu-22.04
+
+  test:
+    needs: [build]
+    if: always()
+    strategy:
+      fail-fast: false
+      matrix:
+        tier: [micro, base, devel]
+    uses: distrotwin/buildkit/.github/workflows/test-one.yml@70ddbf2837df311bc67fc5fe1fa7a3c728b7d8d9
+    with:
+      distro-id: v6
+      arch:      amd64
+      tier:      ${{ matrix.tier }}
+      runner:    ubuntu-22.04
+
+  # 首轮按保守地板跑，绿了之后按实际结果对齐（制度第 9 步）
+  report:
+    needs: [test]
+    if: always()
+    uses: distrotwin/buildkit/.github/workflows/report.yml@70ddbf2837df311bc67fc5fe1fa7a3c728b7d8d9
+    with:
+      distros:  '["v6"]'
+      expected: 3
+      baseline: 100
+
+  publish:
+    needs: [test, report]
+    if: inputs.publish && needs.test.result == 'success' && needs.report.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { tier: micro, latest: false }
+          - { tier: base,  latest: false }
+          - { tier: devel, latest: true }
+    uses: distrotwin/buildkit/.github/workflows/publish-one.yml@70ddbf2837df311bc67fc5fe1fa7a3c728b7d8d9
+    with:
+      distro-id:  v6
+      tier:       ${{ matrix.tier }}
+      image:      linx
+      tag-prefix: v6
+      arches:     amd64
+      latest:     ${{ matrix.latest }}
