@@ -1,6 +1,6 @@
 # 凝思安全操作系统 · 构建与测试镜像
 
-对着凝思 V6.0.100 官方安装介质自举出来的容器环境，用于**软件构建、打包与兼容性测试**。Debian 10 系、glibc 2.28 档 ABI，x86_64 单架构、三个档位，公开在 GHCR。最近一轮 3 个镜像、129 项检查全部通过，零异常。
+对着凝思官方安装介质自举出来的容器环境，用于**软件构建、打包与兼容性测试**。V6.0 是市场伞号，各支底座互不相同——本仓库收六支，构成全 org 跨度最大的 ABI 阶梯（glibc 2.5 → 2.38），公开在 GHCR。
 
 ```bash
 docker run --rm ghcr.io/distrotwin/linx:v6-devel \
@@ -38,17 +38,22 @@ objdump -T ab | grep -oE 'GLIBC_[0-9.]+' | sort -uV | tail -1
 
 ## 选哪一个
 
-| tag | 里面有什么 | 适合 |
-|---|---|---|
-| `v6-micro` | 能跑 shell 的最小根系统，无 apt | 跑编好的二进制、当测试底座 |
-| `v6-base` | micro + apt/python3/systemd/常用工具 | 一般兼容性验证 |
-| `v6-devel` | base + gcc/g++/make/dpkg-dev | 编译、打 deb |
+| 前缀 | 支线（介质自述身份） | 底座 | glibc / gcc | 架构 |
+|---|---|---|---|---|
+| `v6.0.42` | 凝思磐石 Rocky 4.2（自研 pkgutils 包管理） | 自研 | 2.5 / 4.1.2 | amd64 |
+| `v6.0.60` | LinxOS 6.0.60 | Debian 6 squeeze | 2.11 / 4.4.5 | amd64 |
+| `v6.0.97` | LinxOS 6.0.97 an7 | Anolis 7（EL7 系） | 2.17 / 4.8.5 | amd64 |
+| `v6.0.98` | LinxOS 6.0.98 an8 | Anolis 8（EL8 系） | 2.28 / 8.5.0 | amd64+arm64 |
+| `v6`（=6.0.100） | Linx GNU/Linux 6.0.100 | Debian 10 buster | 2.28 / 8.3.0 | amd64 |
+| `v6.0.99` | LinxOS 6.0.99 el24.03 | openEuler 24.03 | 2.38 / 12.3.1 | amd64+arm64 |
 
-`latest` 指向 `v6-devel`。基线（跑镜像实测）：glibc 2.28、libstdc++.so.6.0.25（GLIBCXX ≤ 3.4.25）、gcc 8.3.0。
+每支三档：`<前缀>-micro`（最小根系统）、`<前缀>-base`（+包管理/python3/常用工具）、`<前缀>-devel`（+gcc/g++/make）。**`v6` 即 6.0.100 主线**，`latest` 指向 `v6-devel`。6.0.80 不在列：官方站已无该支介质（目录只剩空的 `80-kernel/`）。6.0.99 的 el20.03/el22.03 两支存在但未收，收的是被系统化打补丁的 el24.03（CSAF 472 条）。
+
+磐石 42 的特别之处如实说明：它既非 deb 也非 rpm（自研 `/var/lib/pkg/db`，无依赖字段），镜像按 ELF 依赖闭包从整盘 rootfs 切出，符号天花板实测 `GLIBC_2.2.5`——这是给「必须兼容极老 glibc」的构建需求准备的真实底座。它没有 apt/dnf；`/etc/os-release` 为容器化合成（该世代早于此规范，文件头注明）；介质里 198/213 包无签名的 6.0.99 与整盘 rootfs 的 42/60/100，完整性锚点都是 ISO 官方校验和链（各数据镜像 `.origin` 逐支记录）。
 
 ## 镜像是怎么造的
 
-凝思只有 ISO 一条公开获取路径，而它的下载站对 GitHub 托管 runner 不可达（本机直连 0.07 秒 200，runner 135 秒超时；判据与探测记录见 buildkit 的 `docs/downstream-repo.md`）。所以取材走**数据镜像**：在能连通厂商站的机器上校验官方 ISO（md5 + sha256 逐位一致）、拷出介质仓库、算依赖闭包把 4.3 GB 裁到 190 MB，推成 `ghcr.io/distrotwin/scratch:linxos-6.0.100-20230822-x86_64`；CI 构建时取回，先对 conf 里钉死的 manifest 指纹、再逐文件核对后才使用。构建走两阶段 debootstrap（与银河麒麟同路），用介质自己的 dpkg 完成自举。
+凝思只有 ISO 一条公开获取路径，而它的下载站对 GitHub 托管 runner 不可达（本机直连 0.07 秒 200，runner 135 秒超时；判据与探测记录见 buildkit 的 `docs/downstream-repo.md`）。所以取材一律走**数据镜像**：在能连通厂商站的机器上按官方 md5sum.txt 校验 ISO、按各支形态切出依赖闭包（deb 支切 dists+pool，rpm 支切 Packages+repodata，磐石支按 ELF 闭包切 rootfs），推成 `ghcr.io/distrotwin/scratch` 的介质 tag；CI 构建时取回，先对 conf 里钉死的 manifest 指纹、再逐文件核对后才使用。deb 支走两阶段 debootstrap，rpm 支走 rpmmedia（EL7 的 rpm 走 NSS，chroot 里要补 /dev/urandom；含 shell 变量的 alternatives 不重放——这些都记在 buildkit）。6.0.100 一支要注明：厂商已把该支 ISO 从下载站撤下（新旧构建全部 404，目录只剩 md5sum.txt），本仓库用的是撤下前获取、且与官方 md5 逐位一致的 20230822 介质——它因此成了这支的事实存档。
 
 完整性锚点链：conf 钉 manifest 指纹 → manifest 覆盖介质每个文件 → 介质 `.origin` 记官方 ISO 的 md5/sha256/字节数 → 该校验和来自厂商发布的 `md5sum.txt`。
 
