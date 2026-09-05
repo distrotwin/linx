@@ -36,7 +36,7 @@ jobs:
           - { did: v6.0.99, arch: amd64 }
           - { did: v6.0.99, arch: arm64 }
         tier: [micro, base, devel]
-    uses: distrotwin/buildkit/.github/workflows/build-one.yml@6d452d67a5e1ca87605e907cce8216bff8de164a
+    uses: distrotwin/buildkit/.github/workflows/build-one.yml@04659f1783256adafb3a708b9dafb88811df2eba
     with:
       distro-id: ${{ matrix.combo.did }}
       arch:      ${{ matrix.combo.arch }}
@@ -59,7 +59,7 @@ jobs:
           - { did: v6.0.99, arch: amd64 }
           - { did: v6.0.99, arch: arm64 }
         tier: [micro, base, devel]
-    uses: distrotwin/buildkit/.github/workflows/test-one.yml@6d452d67a5e1ca87605e907cce8216bff8de164a
+    uses: distrotwin/buildkit/.github/workflows/test-one.yml@04659f1783256adafb3a708b9dafb88811df2eba
     with:
       distro-id: ${{ matrix.combo.did }}
       arch:      ${{ matrix.combo.arch }}
@@ -70,7 +70,7 @@ jobs:
   report:
     needs: [test]
     if: always()
-    uses: distrotwin/buildkit/.github/workflows/report.yml@6d452d67a5e1ca87605e907cce8216bff8de164a
+    uses: distrotwin/buildkit/.github/workflows/report.yml@04659f1783256adafb3a708b9dafb88811df2eba
     with:
       distros:  '["v6","v6.0.42","v6.0.60","v6.0.97","v6.0.98","v6.0.99"]'
       expected: 24
@@ -98,15 +98,12 @@ jobs:
           - { did: v6.0.99, prefix: v6.0.99, tier: micro, arches: "amd64 arm64", latest: false }
           - { did: v6.0.99, prefix: v6.0.99, tier: base,  arches: "amd64 arm64", latest: false }
           - { did: v6.0.99, prefix: v6.0.99, tier: devel, arches: "amd64 arm64", latest: false }
-          # v6 = 6.0.100 主线，双前缀同物：短名 v6 是默认入口（latest 指向
-          # v6-devel），完整版本号 v6.0.100 与其余支线的命名对齐 —— 两个都发
-          - { did: v6,      prefix: v6,       tier: micro, arches: amd64,        latest: false }
-          - { did: v6,      prefix: v6,       tier: base,  arches: amd64,        latest: false }
-          - { did: v6,      prefix: v6,       tier: devel, arches: amd64,        latest: true }
-          - { did: v6,      prefix: v6.0.100, tier: micro, arches: amd64,        latest: false }
-          - { did: v6,      prefix: v6.0.100, tier: base,  arches: amd64,        latest: false }
-          - { did: v6,      prefix: v6.0.100, tier: devel, arches: amd64,        latest: false }
-    uses: distrotwin/buildkit/.github/workflows/publish-one.yml@6d452d67a5e1ca87605e907cce8216bff8de164a
+          # v6 = 6.0.100 主线：只发 v6.0.100 一份，v6 是它的**别名**（同 digest，
+          # publish-one 的 alias-prefixes 建名并断言相等）。latest 也指向它。
+          - { did: v6,      prefix: v6.0.100, alias: v6, tier: micro, arches: amd64, latest: false }
+          - { did: v6,      prefix: v6.0.100, alias: v6, tier: base,  arches: amd64, latest: false }
+          - { did: v6,      prefix: v6.0.100, alias: v6, tier: devel, arches: amd64, latest: true }
+    uses: distrotwin/buildkit/.github/workflows/publish-one.yml@04659f1783256adafb3a708b9dafb88811df2eba
     with:
       distro-id:  ${{ matrix.did }}
       tier:       ${{ matrix.tier }}
@@ -114,3 +111,4 @@ jobs:
       tag-prefix: ${{ matrix.prefix }}
       arches:     ${{ matrix.arches }}
       latest:     ${{ matrix.latest }}
+      alias-prefixes: ${{ matrix.alias || '' }}
