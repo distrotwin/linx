@@ -3,8 +3,10 @@ name: 构建镜像
 # 下游仓库唯一的 workflow：只定义矩阵、调用 buildkit 的可复用 workflow。
 # 只允许手动触发——真正需要的是「我要出一批镜像了」这个显式动作。
 #
-# 凝思只有 x86_64 一个架构：厂商下载站只放 x86_64 的 ISO（download/os/ 各版本
-# 目录实测），没有 arm/loong 介质可取。
+# V6.0 是市场伞号，各支底座互不相同（v6=6.0.100 是 Debian 10 主线，60 是
+# squeeze，97/98 是 Anolis 7/8，99 是 openEuler 24.03）。v6 前缀即 6.0.100 线，
+# latest 也指向它。6.0.42（磐石 Rocky 4.2，自研 pkg 包管理）与 6.0.80（官方
+# 已无介质）不在矩阵，缘由见 README。
 on:
   workflow_dispatch:
     inputs:
@@ -22,13 +24,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # combo 必须是对象数组：include 不与其它轴做笛卡尔积（fangde 实测
+        # 三个 tier job 被 include 覆盖成最后一条，静默少建 12 个）
+        combo:
+          - { did: v6,      arch: amd64 }
+          - { did: v6.0.60, arch: amd64 }
+          - { did: v6.0.97, arch: amd64 }
+          - { did: v6.0.98, arch: amd64 }
+          - { did: v6.0.98, arch: arm64 }
+          - { did: v6.0.99, arch: amd64 }
+          - { did: v6.0.99, arch: arm64 }
         tier: [micro, base, devel]
-    uses: distrotwin/buildkit/.github/workflows/build-one.yml@6d88d822c9643f0b933e2b776f21fc50aea34e66
+    uses: distrotwin/buildkit/.github/workflows/build-one.yml@789035c9c3f2c7d1275b306983251541d25d312b
     with:
-      distro-id: v6
-      arch:      amd64
+      distro-id: ${{ matrix.combo.did }}
+      arch:      ${{ matrix.combo.arch }}
       tier:      ${{ matrix.tier }}
-      runner:    ubuntu-22.04
+      runner:    ${{ matrix.combo.arch == 'arm64' && 'ubuntu-22.04-arm' || 'ubuntu-22.04' }}
 
   test:
     needs: [build]
@@ -36,23 +48,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        combo:
+          - { did: v6,      arch: amd64 }
+          - { did: v6.0.60, arch: amd64 }
+          - { did: v6.0.97, arch: amd64 }
+          - { did: v6.0.98, arch: amd64 }
+          - { did: v6.0.98, arch: arm64 }
+          - { did: v6.0.99, arch: amd64 }
+          - { did: v6.0.99, arch: arm64 }
         tier: [micro, base, devel]
-    uses: distrotwin/buildkit/.github/workflows/test-one.yml@6d88d822c9643f0b933e2b776f21fc50aea34e66
+    uses: distrotwin/buildkit/.github/workflows/test-one.yml@789035c9c3f2c7d1275b306983251541d25d312b
     with:
-      distro-id: v6
-      arch:      amd64
+      distro-id: ${{ matrix.combo.did }}
+      arch:      ${{ matrix.combo.arch }}
       tier:      ${{ matrix.tier }}
-      runner:    ubuntu-22.04
+      runner:    ${{ matrix.combo.arch == 'arm64' && 'ubuntu-22.04-arm' || 'ubuntu-22.04' }}
 
-  # 首轮按保守地板跑，绿了之后按实际结果对齐（制度第 9 步）
+  # v6 实测 3 份 129 项；新四线首轮按保守地板，绿后对齐
   report:
     needs: [test]
     if: always()
-    uses: distrotwin/buildkit/.github/workflows/report.yml@6d88d822c9643f0b933e2b776f21fc50aea34e66
+    uses: distrotwin/buildkit/.github/workflows/report.yml@789035c9c3f2c7d1275b306983251541d25d312b
     with:
-      distros:  '["v6"]'
-      expected: 3
-      baseline: 125
+      distros:  '["v6","v6.0.60","v6.0.97","v6.0.98","v6.0.99"]'
+      expected: 21
+      baseline: 700
 
   publish:
     needs: [test, report]
@@ -61,14 +81,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { tier: micro, latest: false }
-          - { tier: base,  latest: false }
-          - { tier: devel, latest: true }
-    uses: distrotwin/buildkit/.github/workflows/publish-one.yml@6d88d822c9643f0b933e2b776f21fc50aea34e66
+          - { did: v6.0.60, prefix: v6.0.60, tier: micro, arches: amd64,         latest: false }
+          - { did: v6.0.60, prefix: v6.0.60, tier: base,  arches: amd64,         latest: false }
+          - { did: v6.0.60, prefix: v6.0.60, tier: devel, arches: amd64,         latest: false }
+          - { did: v6.0.97, prefix: v6.0.97, tier: micro, arches: amd64,         latest: false }
+          - { did: v6.0.97, prefix: v6.0.97, tier: base,  arches: amd64,         latest: false }
+          - { did: v6.0.97, prefix: v6.0.97, tier: devel, arches: amd64,         latest: false }
+          - { did: v6.0.98, prefix: v6.0.98, tier: micro, arches: "amd64 arm64", latest: false }
+          - { did: v6.0.98, prefix: v6.0.98, tier: base,  arches: "amd64 arm64", latest: false }
+          - { did: v6.0.98, prefix: v6.0.98, tier: devel, arches: "amd64 arm64", latest: false }
+          - { did: v6.0.99, prefix: v6.0.99, tier: micro, arches: "amd64 arm64", latest: false }
+          - { did: v6.0.99, prefix: v6.0.99, tier: base,  arches: "amd64 arm64", latest: false }
+          - { did: v6.0.99, prefix: v6.0.99, tier: devel, arches: "amd64 arm64", latest: false }
+          - { did: v6,      prefix: v6,      tier: micro, arches: amd64,         latest: false }
+          - { did: v6,      prefix: v6,      tier: base,  arches: amd64,         latest: false }
+          # v6 = 6.0.100 主线；latest 指向 v6-devel
+          - { did: v6,      prefix: v6,      tier: devel, arches: amd64,         latest: true }
+    uses: distrotwin/buildkit/.github/workflows/publish-one.yml@789035c9c3f2c7d1275b306983251541d25d312b
     with:
-      distro-id:  v6
+      distro-id:  ${{ matrix.did }}
       tier:       ${{ matrix.tier }}
       image:      linx
-      tag-prefix: v6
-      arches:     amd64
+      tag-prefix: ${{ matrix.prefix }}
+      arches:     ${{ matrix.arches }}
       latest:     ${{ matrix.latest }}
