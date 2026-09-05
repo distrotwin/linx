@@ -98,10 +98,14 @@ jobs:
           - { did: v6.0.99, prefix: v6.0.99, tier: micro, arches: "amd64 arm64", latest: false }
           - { did: v6.0.99, prefix: v6.0.99, tier: base,  arches: "amd64 arm64", latest: false }
           - { did: v6.0.99, prefix: v6.0.99, tier: devel, arches: "amd64 arm64", latest: false }
-          - { did: v6,      prefix: v6,      tier: micro, arches: amd64,         latest: false }
-          - { did: v6,      prefix: v6,      tier: base,  arches: amd64,         latest: false }
-          # v6 = 6.0.100 主线；latest 指向 v6-devel
-          - { did: v6,      prefix: v6,      tier: devel, arches: amd64,         latest: true }
+          # v6 = 6.0.100 主线，双前缀同物：短名 v6 是默认入口（latest 指向
+          # v6-devel），完整版本号 v6.0.100 与其余支线的命名对齐 —— 两个都发
+          - { did: v6,      prefix: v6,       tier: micro, arches: amd64,        latest: false }
+          - { did: v6,      prefix: v6,       tier: base,  arches: amd64,        latest: false }
+          - { did: v6,      prefix: v6,       tier: devel, arches: amd64,        latest: true }
+          - { did: v6,      prefix: v6.0.100, tier: micro, arches: amd64,        latest: false }
+          - { did: v6,      prefix: v6.0.100, tier: base,  arches: amd64,        latest: false }
+          - { did: v6,      prefix: v6.0.100, tier: devel, arches: amd64,        latest: false }
     uses: distrotwin/buildkit/.github/workflows/publish-one.yml@fbf2e622499da737bba23ec930c7102cce7fcb72
     with:
       distro-id:  ${{ matrix.did }}
