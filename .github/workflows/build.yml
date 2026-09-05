@@ -28,6 +28,7 @@ jobs:
         # 三个 tier job 被 include 覆盖成最后一条，静默少建 12 个）
         combo:
           - { did: v6,      arch: amd64 }
+          - { did: v6.0.42, arch: amd64 }
           - { did: v6.0.60, arch: amd64 }
           - { did: v6.0.97, arch: amd64 }
           - { did: v6.0.98, arch: amd64 }
@@ -35,7 +36,7 @@ jobs:
           - { did: v6.0.99, arch: amd64 }
           - { did: v6.0.99, arch: arm64 }
         tier: [micro, base, devel]
-    uses: distrotwin/buildkit/.github/workflows/build-one.yml@789035c9c3f2c7d1275b306983251541d25d312b
+    uses: distrotwin/buildkit/.github/workflows/build-one.yml@d2a9d1867474e0e4a1646c7baea151284a4e1b1d
     with:
       distro-id: ${{ matrix.combo.did }}
       arch:      ${{ matrix.combo.arch }}
@@ -50,6 +51,7 @@ jobs:
       matrix:
         combo:
           - { did: v6,      arch: amd64 }
+          - { did: v6.0.42, arch: amd64 }
           - { did: v6.0.60, arch: amd64 }
           - { did: v6.0.97, arch: amd64 }
           - { did: v6.0.98, arch: amd64 }
@@ -57,7 +59,7 @@ jobs:
           - { did: v6.0.99, arch: amd64 }
           - { did: v6.0.99, arch: arm64 }
         tier: [micro, base, devel]
-    uses: distrotwin/buildkit/.github/workflows/test-one.yml@789035c9c3f2c7d1275b306983251541d25d312b
+    uses: distrotwin/buildkit/.github/workflows/test-one.yml@d2a9d1867474e0e4a1646c7baea151284a4e1b1d
     with:
       distro-id: ${{ matrix.combo.did }}
       arch:      ${{ matrix.combo.arch }}
@@ -68,10 +70,10 @@ jobs:
   report:
     needs: [test]
     if: always()
-    uses: distrotwin/buildkit/.github/workflows/report.yml@789035c9c3f2c7d1275b306983251541d25d312b
+    uses: distrotwin/buildkit/.github/workflows/report.yml@d2a9d1867474e0e4a1646c7baea151284a4e1b1d
     with:
-      distros:  '["v6","v6.0.60","v6.0.97","v6.0.98","v6.0.99"]'
-      expected: 21
+      distros:  '["v6","v6.0.42","v6.0.60","v6.0.97","v6.0.98","v6.0.99"]'
+      expected: 24
       baseline: 700
 
   publish:
@@ -81,6 +83,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - { did: v6.0.42, prefix: v6.0.42, tier: micro, arches: amd64,         latest: false }
+          - { did: v6.0.42, prefix: v6.0.42, tier: base,  arches: amd64,         latest: false }
+          - { did: v6.0.42, prefix: v6.0.42, tier: devel, arches: amd64,         latest: false }
           - { did: v6.0.60, prefix: v6.0.60, tier: micro, arches: amd64,         latest: false }
           - { did: v6.0.60, prefix: v6.0.60, tier: base,  arches: amd64,         latest: false }
           - { did: v6.0.60, prefix: v6.0.60, tier: devel, arches: amd64,         latest: false }
@@ -97,7 +102,7 @@ jobs:
           - { did: v6,      prefix: v6,      tier: base,  arches: amd64,         latest: false }
           # v6 = 6.0.100 主线；latest 指向 v6-devel
           - { did: v6,      prefix: v6,      tier: devel, arches: amd64,         latest: true }
-    uses: distrotwin/buildkit/.github/workflows/publish-one.yml@789035c9c3f2c7d1275b306983251541d25d312b
+    uses: distrotwin/buildkit/.github/workflows/publish-one.yml@d2a9d1867474e0e4a1646c7baea151284a4e1b1d
     with:
       distro-id:  ${{ matrix.did }}
       tier:       ${{ matrix.tier }}
