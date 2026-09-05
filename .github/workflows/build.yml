@@ -52,7 +52,7 @@ jobs:
     with:
       distros:  '["v6"]'
       expected: 3
-      baseline: 100
+      baseline: 125
 
   publish:
     needs: [test, report]
