@@ -36,7 +36,7 @@ jobs:
           - { did: v6.0.99, arch: amd64 }
           - { did: v6.0.99, arch: arm64 }
         tier: [micro, base, devel]
-    uses: distrotwin/buildkit/.github/workflows/build-one.yml@d2a9d1867474e0e4a1646c7baea151284a4e1b1d
+    uses: distrotwin/buildkit/.github/workflows/build-one.yml@fbf2e622499da737bba23ec930c7102cce7fcb72
     with:
       distro-id: ${{ matrix.combo.did }}
       arch:      ${{ matrix.combo.arch }}
@@ -59,7 +59,7 @@ jobs:
           - { did: v6.0.99, arch: amd64 }
           - { did: v6.0.99, arch: arm64 }
         tier: [micro, base, devel]
-    uses: distrotwin/buildkit/.github/workflows/test-one.yml@d2a9d1867474e0e4a1646c7baea151284a4e1b1d
+    uses: distrotwin/buildkit/.github/workflows/test-one.yml@fbf2e622499da737bba23ec930c7102cce7fcb72
     with:
       distro-id: ${{ matrix.combo.did }}
       arch:      ${{ matrix.combo.arch }}
@@ -70,7 +70,7 @@ jobs:
   report:
     needs: [test]
     if: always()
-    uses: distrotwin/buildkit/.github/workflows/report.yml@d2a9d1867474e0e4a1646c7baea151284a4e1b1d
+    uses: distrotwin/buildkit/.github/workflows/report.yml@fbf2e622499da737bba23ec930c7102cce7fcb72
     with:
       distros:  '["v6","v6.0.42","v6.0.60","v6.0.97","v6.0.98","v6.0.99"]'
       expected: 24
@@ -102,7 +102,7 @@ jobs:
           - { did: v6,      prefix: v6,      tier: base,  arches: amd64,         latest: false }
           # v6 = 6.0.100 主线；latest 指向 v6-devel
           - { did: v6,      prefix: v6,      tier: devel, arches: amd64,         latest: true }
-    uses: distrotwin/buildkit/.github/workflows/publish-one.yml@d2a9d1867474e0e4a1646c7baea151284a4e1b1d
+    uses: distrotwin/buildkit/.github/workflows/publish-one.yml@fbf2e622499da737bba23ec930c7102cce7fcb72
     with:
       distro-id:  ${{ matrix.did }}
       tier:       ${{ matrix.tier }}
